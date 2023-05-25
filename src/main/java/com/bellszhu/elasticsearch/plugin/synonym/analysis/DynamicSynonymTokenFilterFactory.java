@@ -64,7 +64,6 @@ public class DynamicSynonymTokenFilterFactory extends
             Settings settings
     ) throws IOException {
         super(indexSettings, name, settings);
-
         this.location = settings.get("synonyms_path");
         if (this.location == null) {
             throw new IllegalArgumentException(
@@ -206,4 +205,7 @@ public class DynamicSynonymTokenFilterFactory extends
         }
     }
 
+    public static void afterIndexShardDeleted() {
+        DynamicSynonymTokenFilterFactory.pool.shutdown();
+    }
 }
