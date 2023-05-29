@@ -186,6 +186,7 @@ public class DynamicSynonymTokenFilterFactory extends
     public void closeSchedule() {
         logger.info("=====closeSchedule=======");
         if (scheduledFuture != null && !scheduledFuture.isCancelled()) {
+            logger.info("=====closeSchedule=======cancel");
             scheduledFuture.cancel(true);
         }
         scheduledFuture = null;
@@ -201,6 +202,9 @@ public class DynamicSynonymTokenFilterFactory extends
 
         @Override
         public void run() {
+            if (scheduledFuture == null || scheduledFuture.isCancelled()) {
+                return;
+            }
             try {
                 logger.info("===== Monitor =======");
                 if (synonymFile.isNeedReloadSynonymMap()) {
