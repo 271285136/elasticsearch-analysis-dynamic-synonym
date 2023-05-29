@@ -2,10 +2,7 @@ package com.bellszhu.elasticsearch.plugin.synonym.analysis;
 
 
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.WeakHashMap;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -67,6 +64,7 @@ public class DynamicSynonymTokenFilterFactory extends
             Settings settings
     ) throws IOException {
         super(indexSettings, name, settings);
+        logger.info("=======DynamicSynonymTokenFilterFactory========");
         factoryWeakHashMap.put(indexSettings, this);
         this.location = settings.get("synonyms_path");
         if (this.location == null) {
@@ -225,9 +223,19 @@ public class DynamicSynonymTokenFilterFactory extends
     public static void afterIndexShardDeleted() {}
 
     public static void afterIndexShardClosed(IndexSettings settings) {
-        if (factoryWeakHashMap.containsKey(settings)){
-            factoryWeakHashMap.get(settings).closeSchedule();
-            factoryWeakHashMap.remove(settings);
+        Set<IndexSettings> iss = new HashSet<>();
+        for (IndexSettings is : factoryWeakHashMap.keySet()) {
+            if (is.getIndex().getName().equals(settings.getIndex().getName())) {
+                factoryWeakHashMap.get(is).closeSchedule();
+                iss.add(is);
+            }
         }
+        for (IndexSettings is : iss) {
+            factoryWeakHashMap.remove(is);
+        }
+//        if (factoryWeakHashMap.containsKey(settings)){
+//            factoryWeakHashMap.get(settings).closeSchedule();
+//            factoryWeakHashMap.remove(settings);
+//        }
     }
 }
