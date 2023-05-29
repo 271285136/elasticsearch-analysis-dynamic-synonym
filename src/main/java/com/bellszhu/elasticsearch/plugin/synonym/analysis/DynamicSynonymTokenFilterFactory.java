@@ -2,6 +2,7 @@ package com.bellszhu.elasticsearch.plugin.synonym.analysis;
 
 
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
@@ -20,6 +21,7 @@ import org.apache.lucene.analysis.synonym.SynonymMap;
 import org.apache.lucene.util.fst.FST;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.env.Environment;
+import org.elasticsearch.index.Index;
 import org.elasticsearch.index.IndexSettings;
 import org.elasticsearch.index.analysis.AbstractTokenFilterFactory;
 import org.elasticsearch.index.analysis.AnalysisMode;
@@ -45,6 +47,7 @@ public class DynamicSynonymTokenFilterFactory extends
         thread.setName("monitor-synonym-Thread-" + id.getAndAdd(1));
         return thread;
     });
+    private static WeakHashMap<IndexSettings, DynamicSynonymTokenFilterFactory> factoryWeakHashMap = new WeakHashMap();
     private volatile ScheduledFuture<?> scheduledFuture;
 
     private final String location;
@@ -64,6 +67,7 @@ public class DynamicSynonymTokenFilterFactory extends
             Settings settings
     ) throws IOException {
         super(indexSettings, name, settings);
+        factoryWeakHashMap.put(indexSettings, this);
         this.location = settings.get("synonyms_path");
         if (this.location == null) {
             throw new IllegalArgumentException(
@@ -158,6 +162,7 @@ public class DynamicSynonymTokenFilterFactory extends
     }
 
     SynonymFile getSynonymFile(Analyzer analyzer) {
+        logger.info("=====getSynonymFile=======");
         try {
             SynonymFile synonymFile;
             if (location.startsWith("http://") || location.startsWith("https://")) {
@@ -176,6 +181,14 @@ public class DynamicSynonymTokenFilterFactory extends
             logger.error("failed to get synonyms: " + location, e);
             throw new IllegalArgumentException("failed to get synonyms : " + location, e);
         }
+    }
+
+    public void closeSchedule() {
+        logger.info("=====closeSchedule=======");
+        if (scheduledFuture != null && !scheduledFuture.isCancelled()) {
+            scheduledFuture.cancel(true);
+        }
+        scheduledFuture = null;
     }
 
     public class Monitor implements Runnable {
@@ -205,7 +218,12 @@ public class DynamicSynonymTokenFilterFactory extends
         }
     }
 
-    public static void afterIndexShardDeleted() {
-        DynamicSynonymTokenFilterFactory.pool.shutdown();
+    public static void afterIndexShardDeleted() {}
+
+    public static void afterIndexShardClosed(IndexSettings settings) {
+        if (factoryWeakHashMap.containsKey(settings)){
+            factoryWeakHashMap.get(settings).closeSchedule();
+            factoryWeakHashMap.remove(settings);
+        }
     }
 }

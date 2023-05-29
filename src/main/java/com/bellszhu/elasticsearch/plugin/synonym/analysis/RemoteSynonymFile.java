@@ -158,7 +158,7 @@ public class RemoteSynonymFile implements SynonymFile {
                             .append(System.getProperty("line.separator"));
                 }
                 reader = new StringReader(sb.toString());
-            } else reader = new StringReader("");
+            } else reader = new StringReader("1=>1");
         } catch (Exception e) {
             logger.error("get remote synonym reader {} error!", location, e);
 //            throw new IllegalArgumentException(
@@ -186,7 +186,6 @@ public class RemoteSynonymFile implements SynonymFile {
 
     @Override
     public boolean isNeedReloadSynonymMap() {
-        logger.info("==== isNeedReloadSynonymMap ====");
         RequestConfig rc = RequestConfig.custom()
                 .setConnectionRequestTimeout(10 * 1000)
                 .setConnectTimeout(10 * 1000).setSocketTimeout(15 * 1000)

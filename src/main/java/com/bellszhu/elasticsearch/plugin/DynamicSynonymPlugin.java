@@ -8,12 +8,17 @@ import java.util.Map;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.elasticsearch.cluster.routing.ShardRouting;
+import org.elasticsearch.common.Nullable;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.index.Index;
 import org.elasticsearch.index.IndexModule;
+import org.elasticsearch.index.IndexService;
 import org.elasticsearch.index.IndexSettings;
 import org.elasticsearch.index.analysis.TokenFilterFactory;
 import org.elasticsearch.index.shard.IndexEventListener;
+import org.elasticsearch.index.shard.IndexShard;
+import org.elasticsearch.index.shard.IndexShardState;
 import org.elasticsearch.index.shard.ShardId;
 import org.elasticsearch.indices.analysis.AnalysisModule.AnalysisProvider;
 import org.elasticsearch.indices.cluster.IndicesClusterStateService;
@@ -46,14 +51,20 @@ public class DynamicSynonymPlugin extends Plugin implements AnalysisPlugin {
             @Override
             public void afterIndexRemoved(Index index, IndexSettings indexSettings, IndicesClusterStateService.AllocatedIndices.IndexRemovalReason reason) {
                 IndexEventListener.super.afterIndexRemoved(index, indexSettings, reason);
-                logger.info("=====afterIndexRemoved=======");
             }
 
             @Override
             public void afterIndexShardDeleted(ShardId shardId, Settings indexSettings) {
                 IndexEventListener.super.afterIndexShardDeleted(shardId, indexSettings);
                 DynamicSynonymTokenFilterFactory.afterIndexShardDeleted();
-                logger.info("=====afterIndexShardDeleted=======");
+            }
+
+            @Override
+            public  void afterIndexShardClosed(ShardId shardId, @Nullable IndexShard indexShard, Settings indexSettings) {
+                IndexEventListener.super.afterIndexShardClosed(shardId, indexShard, indexSettings);
+                DynamicSynonymTokenFilterFactory.afterIndexShardClosed(indexShard.getService().indexSettings());
+                // 关闭、删除、开启（先关闭再重新初始化）
+                logger.info("=====afterIndexShardClosed=======");
             }
         };
         indexModule.addIndexEventListener(listener);
